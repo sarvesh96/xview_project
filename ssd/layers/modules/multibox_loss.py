@@ -87,18 +87,15 @@ class MultiBoxLoss(nn.Module):
 		pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
 		loc_p = loc_data[pos_idx].view(-1, 4)
 		loc_t = loc_t[pos_idx].view(-1, 4)
-		# assert loc_t==loc_t
 		loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
-		# assert loss_l==loss_l
-		# assert np.all(mp.isfinite(loss_l.cpu().data.numpy()))
-
 
 		# Compute max conf across batch for hard negative mining
 		batch_conf = conf_data.view(-1, self.num_classes)
 		loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))
 
 		# Hard Negative Mining
-		loss_c[pos] = 0  # filter out pos boxes for now
+		# loss_c = loss_c.view(num, -1)
+		loss_c[pos.view(-1, 1)] = 0  # filter out pos boxes for now
 		loss_c = loss_c.view(num, -1)
 		_, loss_idx = loss_c.sort(1, descending=True)
 		_, idx_rank = loss_idx.sort(1)
@@ -116,6 +113,7 @@ class MultiBoxLoss(nn.Module):
 		# Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
 
 		N = num_pos.data.sum()
+		N = N.float()
 		loss_l /= N
 		loss_c /= N
 		return loss_l, loss_c

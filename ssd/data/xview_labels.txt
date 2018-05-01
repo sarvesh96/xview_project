@@ -1,3 +1,4 @@
+0,0,__NOCLASS__
 11,1,fixed_wing_aircraft
 12,2,small_aircraft
 13,3,passenger_OR_cargo_plane
