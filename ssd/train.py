@@ -27,11 +27,11 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--dataset', default='XVIEW', choices=['XVIEW'],
 					type=str, help='XVIEW')
-parser.add_argument('--images_filename', default='../Data/chipped/images_300.npy',
+parser.add_argument('--images_filename', default='../../Data/chipped/images_300_num_25.npy',
 					type=str, help='location of _images.npy')
-parser.add_argument('--boxes_filename', default='../Data/chipped/boxes_300.npy',
+parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_num_25.npy',
 					type=str, help='location of _boxes.npy')
-parser.add_argument('--classes_filename', default='../Data/chipped/classes_300.npy',
+parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_num_25.npy',
 					type=str, help='location of _classes.npy')
 parser.add_argument('--dataset_root', default=XVIEW_ROOT,
 					help='Dataset root directory path')
@@ -174,10 +174,10 @@ def train():
 
 		if args.cuda:
 			images = Variable(images.cuda())
-			targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
+			targets = [Variable(ann.cuda(), requires_grad=True) for ann in targets]
 		else:
 			images = Variable(images)
-			targets = [Variable(ann, volatile=True) for ann in targets]
+			targets = [Variable(ann, requires_grad=True) for ann in targets]
 		# forward
 		t0 = time.time()
 		out = net(images)
@@ -188,12 +188,12 @@ def train():
 		loss.backward()
 		optimizer.step()
 		t1 = time.time()
-		loc_loss += loss_l.data[0]
-		conf_loss += loss_c.data[0]
+		loc_loss += loss_l.data
+		conf_loss += loss_c.data
 
 		if iteration % 10 == 0:
 			print('timer: %.4f sec.' % (t1 - t0))
-			print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+			print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data))#, end=' ')
 
 		# if args.visdom:
 		#     update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
@@ -219,7 +219,7 @@ def adjust_learning_rate(optimizer, gamma, step):
 
 
 def xavier(param):
-	init.xavier_uniform(param)
+	init.xavier_uniform_(param)
 
 
 def weights_init(m):
