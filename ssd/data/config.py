@@ -12,7 +12,7 @@ MEANS = (104, 117, 123)
 
 # SSD300 CONFIGS
 xview = {
-	'num_classes': 95,
+	'num_classes': 61,
 	'lr_steps': (120000, 185000, 250000),
 	'max_iter': 250000,
 	'feature_maps': [38, 19, 10, 5, 3, 1],

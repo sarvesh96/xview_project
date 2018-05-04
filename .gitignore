@@ -102,3 +102,6 @@ ENV/
 
 # Google Drive Files
 Icon*
+
+# Weights
+*.pth
