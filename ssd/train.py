@@ -185,6 +185,7 @@ def train():
 		optimizer.zero_grad()
 		loss_l, loss_c = criterion(out, targets)
 		loss = loss_l + loss_c
+		print('Loc Loss:{:>10.4f}| Conf Loss:{:10.4f}'.format(loss_l, loss_c))
 		loss.backward()
 		optimizer.step()
 		t1 = time.time()
