@@ -90,16 +90,10 @@ class MultiBoxLoss(nn.Module):
 		loc_p = loc_data[pos_idx].view(-1, 4)
 		loc_t = loc_t[pos_idx].view(-1, 4)
 
-		print("LOC_P")
-		print(loc_p[loc_p == -float('inf')])
-		print("LOC_T")
-		print(loc_t)
-		print("TARGETS")
-		print(targets)
-		print("PREDS")
-		print(predictions)
+		# Check for images with no boxes or classes and remove them from loss calculation
+		loc_p = loc_p[loc_t != -float('inf')]
+		loc_t = loc_t[loc_t != -float('inf')]
 
-		time.sleep(20)
 		loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
 
 		# Compute max conf across batch for hard negative mining
