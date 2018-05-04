@@ -89,14 +89,16 @@ class MultiBoxLoss(nn.Module):
 		pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
 		loc_p = loc_data[pos_idx].view(-1, 4)
 		loc_t = loc_t[pos_idx].view(-1, 4)
+
 		print("LOC_P")
-		print(loc_p)
+		print(loc_p[loc_p == -float('inf')])
 		print("LOC_T")
 		print(loc_t)
 		print("TARGETS")
 		print(targets)
 		print("PREDS")
 		print(predictions)
+
 		time.sleep(20)
 		loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
 
