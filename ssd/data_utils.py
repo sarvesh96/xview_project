@@ -23,7 +23,7 @@ from torch.autograd import Variable
 
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.dataloader import DataLoader
-from torch.utils.data.dataloader import _use_shared_memory 
+from torch.utils.data.dataloader import _use_shared_memory
 
 from torch.nn.utils.rnn import pack_padded_sequence
 from torch.nn.utils.rnn import pad_packed_sequence
@@ -80,8 +80,8 @@ class image_dataset(Dataset):
 
     def get_labels(self, json_data):
         """
-        Gets label data from a geojson label file and stores three arrays: coords, chips, 
-            and classes corresponding to the coordinates, file-names, and classes for 
+        Gets label data from a geojson label file and stores three arrays: coords, chips,
+            and classes corresponding to the coordinates, file-names, and classes for
             each ground truth.
 
         Args:
@@ -126,7 +126,7 @@ class image_dataset(Dataset):
             multiple chips are clipped: each portion that is in a chip is labeled. For example,
             half a building will be labeled if it is cut off in a chip. If there are no boxes,
             the boxes array will be [[0,0,0,0]] and classes [0].
-            Note: This chip_image method is only tested on xView data-- there are some 
+            Note: This chip_image method is only tested on xView data-- there are some
                 image manipulations that can mess up different images.
         Args:
             image: the image to be chipped in array format

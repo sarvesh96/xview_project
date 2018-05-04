@@ -64,7 +64,7 @@ class XVIEWAnnotationTransform(object):
 	def __init__(self):
 		self.label_map = map_labels_contiguous(osp.join(XVIEW_ROOT, 'xview_labels.txt'))
 
-	def __call__(self, bounding_boxes, img_class_xview):
+	def __call__(self, bounding_boxes, img_class_xview, height=1, width=1):
 		"""
 		Arguments:
 			bounding_boxes (np.ndarray): 2D array containing [xmin, ymin, xmin, xmax] of multiple
@@ -81,7 +81,9 @@ class XVIEWAnnotationTransform(object):
 
 class XVIEWDetection(Dataset):
 	"""XVIEW Detection Dataset Object
+
 	input is image, target is annotation
+
 	Arguments:
 		root (string): filepath to XVIEW folder.
 		image_set (string): imageset to use (eg. 'train', 'val', 'test')
@@ -105,13 +107,21 @@ class XVIEWDetection(Dataset):
 		self.images = np.load(images_filename, encoding='bytes')
 		self.boxes = np.load(boxes_filename, encoding='bytes')
 		self.classes = np.load(classes_filename, encoding='bytes')
-	
 
 	def __getitem__(self, index):
+		im, gt, h, w = self.pull_item(index)
+
+		return im, gt
+
+	def __len__(self):
+		return self.images.shape[0]
+
+	def pull_item(self, index):
 		img = self.images[index]
+		height, width, channels = img.shape
 
 		if self.target_transform is not None:
-			target = self.target_transform(self.boxes[index], self.classes[index])
+			target = self.target_transform(self.boxes[index], self.classes[index], height, width)
 
 		if self.transform is not None:
 			target = np.array(target)
@@ -120,35 +130,29 @@ class XVIEWDetection(Dataset):
 			img = img[:, :, (2, 1, 0)]
 			# img = img.transpose(2, 0, 1)
 			target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
-
-		return torch.from_numpy(img).permute(2, 0, 1), target
-
-
-	def __len__(self):
-		return self.images.shape[0]
-
-
-	def pull_item(self, index):
-		# Implemented as __getitem__
-		self.__getitem__(index)
-
+		return torch.from_numpy(img).permute(2, 0, 1), target, height, width
+		# return torch.from_numpy(img), target, height, width
 
 	def pull_image(self, index):
 		'''Returns the original image object at index in PIL form
+
 		Note: not using self.__getitem__(), as any transformations passed in
 		could mess up this functionality.
+
 		Argument:
 			index (int): index of img to show
 		Return:
 			PIL img
 		'''
-		return cv2.imread(self.images[index], mode=None) # Mode will be determined from type if None
-
+		image = self.images[index]
+		return PIL.Image.fromarray(image, mode="RGB")
 
 	def pull_anno(self, index):
 		'''Returns the original annotation of image at index
+
 		Note: not using self.__getitem__(), as any transformations passed in
 		could mess up this functionality.
+
 		Argument:
 			index (int): index of img to get annotation of
 		Return:
@@ -156,18 +160,19 @@ class XVIEWDetection(Dataset):
 				eg: ('001718', [('dog', (96, 13, 438, 332))])
 		'''
 		img_id = str(index)
-		gt = self.target_transform(self.boxes[index], self.classes[index])
+		gt = self.target_transform(self.boxes[index], self.classes[index], 1, 1)
 
 		return img_id, gt
 
-
 	def pull_tensor(self, index):
 		'''Returns the original image at an index in tensor form
+
 		Note: not using self.__getitem__(), as any transformations passed in
 		could mess up this functionality.
+
 		Argument:
 			index (int): index of img to show
 		Return:
 			tensorized version of img, squeezed
 		'''
-		return torch.Tensor(self.images[index].unsqueeze_(0))
+		return torch.Tensor(self.pull_image(index)).unsqueeze_(0)
