@@ -3,6 +3,7 @@ import os.path
 
 # gets home dir cross platform
 HOME = os.path.expanduser("/home/ubuntu/Project/xview_project/ssd/")
+# HOME = os.path.expanduser("/Users/sarvesh96/Google Drive File Stream/My Drive/CMU/2017 Winter/11-785/Project/ssd.pytorch/")
 
 # for making bounding boxes pretty
 COLORS = ((255, 0, 0, 128), (0, 255, 0, 128), (0, 0, 255, 128),

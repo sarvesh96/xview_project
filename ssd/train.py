@@ -27,20 +27,12 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--dataset', default='XVIEW', choices=['XVIEW'],
 					type=str, help='XVIEW')
-parser.add_argument('--images_filename', default='../../Data/chipped/images_300_num_25.npy',
-					type=str, help='location of _images.npy')
-parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_num_25.npy',
-					type=str, help='location of _boxes.npy')
-parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_num_25.npy',
-					type=str, help='location of _classes.npy')
 parser.add_argument('--dataset_root', default=XVIEW_ROOT,
 					help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
 					help='Pretrained base model')
 parser.add_argument('--batch_size', default=32, type=int,
 					help='Batch size for training')
-parser.add_argument('--num_epochs', default=10, type=int,
-					help='Number of epochs on the data')
 parser.add_argument('--resume', default=None, type=str,
 					help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
@@ -61,8 +53,14 @@ parser.add_argument('--visdom', default=False, type=str2bool,
 					help='Use visdom for loss visualization')
 parser.add_argument('--save_folder', default='weights/',
 					help='Directory for saving checkpoint models')
-parser.add_argument('--verbose', default=True,
-					help='')
+parser.add_argument('--num_epochs', default=10, type=int,
+					help='Number of epochs on the data')
+parser.add_argument('--images_filename', default='../../Data/chipped/images_300_num_25.npy',
+					type=str, help='location of _images.npy')
+parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_num_25.npy',
+					type=str, help='location of _boxes.npy')
+parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_num_25.npy',
+					type=str, help='location of _classes.npy')
 args = parser.parse_args()
 
 
@@ -81,22 +79,24 @@ if not os.path.exists(args.save_folder):
 
 
 def train():
-	cfg = xview
-
-	if args.verbose:
-		print('Loading Dataset...')
-	dataset = XVIEWDetection(args.images_filename,
-							args.boxes_filename,
-							args.classes_filename,
-							transform=SSDAugmentation(cfg['min_dim'],
-								MEANS))
+	if args.dataset == 'XVIEW':
+		if args.dataset_root != XVIEW_ROOT:
+			if not os.path.exists(XVIEW_ROOT):
+				parser.error('Must specify dataset_root if specifying dataset')
+			print("WARNING: Using default COCO dataset_root because " +
+				  "--dataset_root was not specified.")
+			args.dataset_root = XVIEW_ROOT
+		cfg = xview
+		dataset = XVIEWDetection(args.images_filename,
+		                         args.boxes_filename,
+								 args.classes_filename,
+								 transform=SSDAugmentation(cfg['min_dim'],
+														   MEANS))
 
 	if args.visdom:
 		import visdom
 		viz = visdom.Visdom()
 
-	if args.verbose:
-		print('Building Model...')
 	ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
 	net = ssd_net
 
@@ -104,8 +104,6 @@ def train():
 		net = torch.nn.DataParallel(ssd_net)
 		cudnn.benchmark = True
 
-	if args.verbose:
-		print('Resuming/Loading-New...')
 	if args.resume:
 		print('Resuming training, loading {}...'.format(args.resume))
 		ssd_net.load_weights(args.resume)
@@ -124,8 +122,6 @@ def train():
 		ssd_net.loc.apply(weights_init)
 		ssd_net.conf.apply(weights_init)
 
-	if args.verbose:
-		print('Loading Optimizer & Criterion...')
 	optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum,
 						  weight_decay=args.weight_decay)
 	criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
@@ -141,7 +137,7 @@ def train():
 	epoch_size = len(dataset) // args.batch_size
 	print('Training SSD on:', dataset.name)
 	print('Using the specified args:')
-
+	print(args)
 
 	step_index = 0
 
@@ -152,64 +148,67 @@ def train():
 		epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
 
 	data_loader = DataLoader(dataset, args.batch_size,
-							  num_workers=args.num_workers,
-							  shuffle=True, collate_fn=detection_collate,
-							  pin_memory=True)
-	
+								  num_workers=args.num_workers,
+								  shuffle=True, collate_fn=detection_collate,
+								  pin_memory=True)
+
 	# create batch iterator
-	for epoch_ in range(args.num_epochs):
-		# batch_iterator = iter(data_loader)
-		# for iteration in range(args.start_iter, cfg['max_iter']):
-		for iteration, (images, targets) in enumerate(data_loader):
-			if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
-				update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
-						'append', epoch_size)
-				# reset epoch loss counters
-				loc_loss = 0
-				conf_loss = 0
-				epoch += 1
+	batch_iterator = iter(data_loader)
+	for iteration in range(args.start_iter, cfg['max_iter']):
+		if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
+			update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
+							'append', epoch_size)
+			# reset epoch loss counters
+			loc_loss = 0
+			conf_loss = 0
+			epoch += 1
 
-			if iteration in cfg['lr_steps']:
-				step_index += 1
-				adjust_learning_rate(optimizer, args.gamma, step_index)
+		if iteration in cfg['lr_steps']:
+			step_index += 1
+			adjust_learning_rate(optimizer, args.gamma, step_index)
 
-			# load train data
-			# images, targets = next(batch_iterator)
+		# load train data
+		images, targets = next(batch_iterator)
 
-			if args.cuda:
-				images = Variable(images.cuda())
-				targets = [Variable(ann.cuda(), requires_grad=True) for ann in targets]
-			else:
-				images = Variable(images)
-				targets = [Variable(ann, requires_grad=True) for ann in targets]
-			# forward
-			t0 = time.time()
-			out = net(images)
-			# backprop
-			optimizer.zero_grad()
-			loss_l, loss_c = criterion(out, targets)
-			loss = loss_l + loss_c
-			print('Loc Loss:{:>10.4f}| Conf Loss:{:10.4f}'.format(loss_l, loss_c))
-			loss.backward()
-			optimizer.step()
-			t1 = time.time()
-			loc_loss += loss_l.data
-			conf_loss += loss_c.data
+		if args.cuda:
+			images = Variable(images.cuda())
+			targets = [Variable(ann.cuda(), requires_grad=True) for ann in targets]
+		else:
+			images = Variable(images)
+			targets = [Variable(ann, requires_grad=True) for ann in targets]
 
-			if iteration % 10 == 0:
-				print('timer: %.4f sec.' % (t1 - t0))
-				print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data))#, end=' ')
+		# forward
+		t0 = time.time()
+		out = net(images)
 
-			if args.visdom:
-				update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
-						iter_plot, epoch_plot, 'append')
+		# backprop
+		optimizer.zero_grad()
+		loss_l, loss_c = criterion(out, targets)
+		loss = loss_l + loss_c
 
-			if iteration != 0 and iteration % 5000 == 0:
-				print('Saving state, iter:', iteration)
-				torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
-						   repr(iteration) + '.pth')
-		torch.save(ssd_net.state_dict(),
-				   args.save_folder + args.dataset + '_' + str(epoch_) + '.pth')
+		loss.backward()
+		optimizer.step()
+
+		t1 = time.time()
+
+		print('Loc Loss:{:>10.4f}| Conf Loss:{:10.4f}'.format(loss_l, loss_c))
+		loc_loss += loss_l.data
+		conf_loss += loss_c.data
+
+		if iteration % 10 == 0:
+			print('timer: %.4f sec.' % (t1 - t0))
+			print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data))#, end=' ')
+
+		if args.visdom:
+			update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
+							iter_plot, epoch_plot, 'append')
+
+		if iteration != 0 and iteration % 5000 == 0:
+			print('Saving state, iter:', iteration)
+			torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
+					   repr(iteration) + '.pth')
+	torch.save(ssd_net.state_dict(),
+			   args.save_folder + '' + args.dataset + '.pth')
 
 
 def adjust_learning_rate(optimizer, gamma, step):
@@ -233,35 +232,35 @@ def weights_init(m):
 		m.bias.data.zero_()
 
 
-# def create_vis_plot(_xlabel, _ylabel, _title, _legend):
-#     return viz.line(
-#         X=torch.zeros((1,)).cpu(),
-#         Y=torch.zeros((1, 3)).cpu(),
-#         opts=dict(
-#             xlabel=_xlabel,
-#             ylabel=_ylabel,
-#             title=_title,
-#             legend=_legend
-#         )
-#     )
+def create_vis_plot(_xlabel, _ylabel, _title, _legend):
+	return viz.line(
+		X=torch.zeros((1,)).cpu(),
+		Y=torch.zeros((1, 3)).cpu(),
+		opts=dict(
+			xlabel=_xlabel,
+			ylabel=_ylabel,
+			title=_title,
+			legend=_legend
+		)
+	)
 
 
-# def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
-#                     epoch_size=1):
-#     viz.line(
-#         X=torch.ones((1, 3)).cpu() * iteration,
-#         Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu() / epoch_size,
-#         win=window1,
-#         update=update_type
-#     )
-#     # initialize epoch plot on first iteration
-#     if iteration == 0:
-#         viz.line(
-#             X=torch.zeros((1, 3)).cpu(),
-#             Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu(),
-#             win=window2,
-#             update=True
-#         )
+def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
+					epoch_size=1):
+	viz.line(
+		X=torch.ones((1, 3)).cpu() * iteration,
+		Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu() / epoch_size,
+		win=window1,
+		update=update_type
+	)
+	# initialize epoch plot on first iteration
+	if iteration == 0:
+		viz.line(
+			X=torch.zeros((1, 3)).cpu(),
+			Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu(),
+			win=window2,
+			update=True
+		)
 
 
 if __name__ == '__main__':

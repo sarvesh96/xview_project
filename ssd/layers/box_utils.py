@@ -86,7 +86,7 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
 		The matched indices corresponding to 1)location and 2)confidence preds.
 	"""
 	# jaccard index
-	overlaps = 
+	overlaps = jaccard(
 		truths,
 		point_form(priors)
 	)
