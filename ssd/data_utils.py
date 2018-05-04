@@ -50,7 +50,7 @@ class image_dataset(Dataset):
             self.get_labels(json_data)
 
             self.images, self.boxes, classes = [], [], []
-            for filename in tqdm(file_names[:10]):
+            for filename in tqdm(file_names[:25]):
                 img = np.array(Image.open(filename))
                 img_name = filename.split("/")[-1]
 
@@ -67,9 +67,9 @@ class image_dataset(Dataset):
             self.boxes = np.array(self.boxes)
             self.classes = np.array(classes)
 
-            np.save(chip_dir_name + 'images_600_num_10.npy', self.images)
-            np.save(chip_dir_name + 'classes_600_num_10.npy', self.classes)
-            np.save(chip_dir_name + 'boxes_600_num_10.npy', self.boxes)
+            np.save(chip_dir_name + 'images_300_num_25.npy', self.images)
+            np.save(chip_dir_name + 'classes_300_num_25.npy', self.classes)
+            np.save(chip_dir_name + 'boxes_300_num_25.npy', self.boxes)
 
 
     def __getitem__(self, index):
@@ -120,7 +120,7 @@ class image_dataset(Dataset):
 
         return im[perm], box[perm], cls[perm]
 
-    def chip_image(self, image, coords, classes, shape=(600, 600)):
+    def chip_image(self, image, coords, classes, shape=(300, 300)):
         """
         Chip an image and get relative coordinates and classes.  Bounding boxes that pass into
             multiple chips are clipped: each portion that is in a chip is labeled. For example,
@@ -142,9 +142,10 @@ class image_dataset(Dataset):
         wn, hn = shape
 
         w_num, h_num = (int(width / wn), int(height / hn))
-        images = np.zeros((w_num * h_num, hn, wn, 3))
-        total_boxes = [0] * (w_num * h_num)
-        total_classes = [0] * (w_num * h_num)
+        # images = np.zeros((w_num * h_num, hn, wn, 3))
+        images = []
+        total_boxes = []
+        total_classes = []
 
         k = 0
         for i in range(w_num):
@@ -162,20 +163,22 @@ class image_dataset(Dataset):
                 box_classes = classes[x][y]
 
                 if out.shape[0]:
-                    total_boxes[k] = np.array(out)
-                    total_classes[k] = np.array(box_classes)
-                else:
-                    total_boxes[k] = np.array([[0, 0, 0, 0]])
-                    total_classes[k] = np.array([0])
-
-                chip = image[hn * j:hn * (j + 1), wn * i:wn * (i + 1), :3]
-                images[k] = chip
+                    total_boxes.append(np.array(out))
+                    total_classes.append(np.array(box_classes))
+                    chip = image[hn * j:hn * (j + 1), wn * i:wn * (i + 1), :3]
+                    images.append(chip)
+                # else:
+                #     total_boxes[k] = np.array([[0, 0, 0, 0]])
+                #     total_classes[k] = np.array([0])
 
                 k = k + 1
 
+        images = np.array(images)
         total_boxes = np.array(total_boxes)
         total_classes = np.array(total_classes)
         image_tuple = (images.astype(np.uint8), total_boxes, total_classes)
+
+        # print(images.shape, total_boxes.shape, total_classes.shape)
 
         return self.shuffle_images_and_boxes_classes(*image_tuple)
 
@@ -200,18 +203,18 @@ def plot_image(dataset, chip_image_index):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_dir_name", default="../Data/train_images/",
+    parser.add_argument("--image_dir_name", default="../../Data/train_images/",
                         help="Path to folder containing image chips \
                         (ie 'xview/train_images/' ")
-    parser.add_argument("--json_file_path", default="../Data/xView_train.geojson",
+    parser.add_argument("--json_file_path", default="../../Data/xView_train.geojson",
                         help="File path to GEOJSON coordinate file")
-    parser.add_argument("--images_filename", default="../Data/chipped/images.npy",
+    parser.add_argument("--images_filename", default="../../Data/chipped/images.npy",
                         help="File path to images.npy file")
-    parser.add_argument("--boxes_filename", default="../Data/chipped/boxes.npy",
+    parser.add_argument("--boxes_filename", default="../../Data/chipped/boxes.npy",
                         help="File path to boxes.npy file")
-    parser.add_argument("--classes_filename", default="../Data/chipped/classes.npy",
+    parser.add_argument("--classes_filename", default="../../Data/chipped/classes.npy",
                         help="File path to classes.npy file")
-    parser.add_argument("--chip_image_dir_name", default="../Data/chipped/",
+    parser.add_argument("--chip_image_dir_name", default="../../Data/chipped/",
                         help="File path to chipped image files")
     parser.add_argument("--is_chipped", default=False,
                         help="File path to chipped image files")

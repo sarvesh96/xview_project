@@ -141,7 +141,7 @@ def train():
 	epoch_size = len(dataset) // args.batch_size
 	print('Training SSD on:', dataset.name)
 	print('Using the specified args:')
-	print(args)
+
 
 	step_index = 0
 
