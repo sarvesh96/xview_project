@@ -55,11 +55,11 @@ parser.add_argument('--save_folder', default='weights/',
 					help='Directory for saving checkpoint models')
 parser.add_argument('--num_epochs', default=10, type=int,
 					help='Number of epochs on the data')
-parser.add_argument('--images_filename', default='../../Data/chipped/images_300_num_25.npy',
+parser.add_argument('--images_filename', default='../../Data/chipped/images_300_train.npy',
 					type=str, help='location of _images.npy')
-parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_num_25.npy',
+parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_train.npy',
 					type=str, help='location of _boxes.npy')
-parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_num_25.npy',
+parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_train.npy',
 					type=str, help='location of _classes.npy')
 args = parser.parse_args()
 
@@ -223,7 +223,7 @@ def adjust_learning_rate(optimizer, gamma, step):
 
 
 def xavier(param):
-	init.xavier_uniform_(param)
+	init.xavier_uniform(param)
 
 
 def weights_init(m):
