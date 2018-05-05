@@ -191,7 +191,7 @@ def train():
 
 		t1 = time.time()
 
-		print('Loc Loss:{:>10.4f}| Conf Loss:{:10.4f}'.format(loss_l, loss_c))
+		# print('Loc Loss:{:>10.4f}| Conf Loss:{:10.4f}'.format(loss_l, loss_c))
 		loc_loss += loss_l.data
 		conf_loss += loss_c.data
 

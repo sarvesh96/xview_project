@@ -31,7 +31,7 @@ class SSD(nn.Module):
         self.num_classes = num_classes
         self.cfg = xview
         self.priorbox = PriorBox(self.cfg)
-        self.priors = Variable(self.priorbox.forward(), volatile=True)
+        self.priors = Variable(self.priorbox.forward(), requires_grad=True)
         self.size = size
 
         # SSD network
