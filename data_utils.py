@@ -50,7 +50,7 @@ class image_dataset(Dataset):
             self.get_labels(json_data)
 
             self.images, self.boxes, classes = [], [], []
-            for filename in tqdm(file_names[:5]):
+            for filename in tqdm(file_names[:151]):
                 img = np.array(Image.open(filename))
                 img_name = filename.split("/")[-1]
 
@@ -67,9 +67,9 @@ class image_dataset(Dataset):
             self.boxes = np.array(self.boxes)
             self.classes = np.array(classes)
 
-            np.save(chip_dir_name + 'images_600_num_5.npy', self.images)
-            np.save(chip_dir_name + 'classes_600_num_5.npy', self.classes)
-            np.save(chip_dir_name + 'boxes_600_num_5.npy', self.boxes)
+            np.save(chip_dir_name + 'images_300_train.npy', self.images)
+            np.save(chip_dir_name + 'classes_300_train.npy', self.classes)
+            np.save(chip_dir_name + 'boxes_300_train.npy', self.boxes)
 
 
     def __getitem__(self, index):
@@ -120,7 +120,7 @@ class image_dataset(Dataset):
 
         return im[perm], box[perm], cls[perm]
 
-    def chip_image(self, image, coords, classes, shape=(600, 600)):
+    def chip_image(self, image, coords, classes, shape=(300, 300)):
         """
         Chip an image and get relative coordinates and classes.  Bounding boxes that pass into
             multiple chips are clipped: each portion that is in a chip is labeled. For example,
@@ -203,18 +203,18 @@ def plot_image(dataset, chip_image_index):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_dir_name", default="../../Data/train_images/",
+    parser.add_argument("--image_dir_name", default="../Data/train_images/",
                         help="Path to folder containing image chips \
                         (ie 'xview/train_images/' ")
-    parser.add_argument("--json_file_path", default="../../Data/xView_train.geojson",
+    parser.add_argument("--json_file_path", default="../Data/xView_train.geojson",
                         help="File path to GEOJSON coordinate file")
-    parser.add_argument("--images_filename", default="../../Data/chipped/images.npy",
+    parser.add_argument("--images_filename", default="../Data/chipped/images.npy",
                         help="File path to images.npy file")
-    parser.add_argument("--boxes_filename", default="../../Data/chipped/boxes.npy",
+    parser.add_argument("--boxes_filename", default="../Data/chipped/boxes.npy",
                         help="File path to boxes.npy file")
-    parser.add_argument("--classes_filename", default="../../Data/chipped/classes.npy",
+    parser.add_argument("--classes_filename", default="../Data/chipped/classes.npy",
                         help="File path to classes.npy file")
-    parser.add_argument("--chip_image_dir_name", default="../../Data/chipped/",
+    parser.add_argument("--chip_image_dir_name", default="../Data/chipped/",
                         help="File path to chipped image files")
     parser.add_argument("--is_chipped", default=False,
                         help="File path to chipped image files")
