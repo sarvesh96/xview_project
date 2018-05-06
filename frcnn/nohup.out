@@ -1,0 +1,13 @@
+INFO:root:Application Started
+INFO:tornado.access:200 POST /events (127.0.0.1) 204.88ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 1.14ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.59ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.59ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.59ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.56ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.60ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms

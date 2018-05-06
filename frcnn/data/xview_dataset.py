@@ -1,10 +1,10 @@
 import os
-import xml.etree.ElementTree as ET
-
+import os.path as osp
 import numpy as np
 
 from .util import read_image
 
+HOME = '/home/ubuntu/Project/xview_project/frcnn/'
 
 def map_labels_contiguous(label_file):
     label_map = {}
@@ -82,9 +82,9 @@ class XVIEWBboxDataset:
         #             'for 2012 dataset. For 2007 dataset, you can pick \'test\''
         #             ' in addition to the above mentioned splits.'
         #         )
-        images_filename = '../../../Data/chipped/images_600_num_10.npy'
-        boxes_filename = '../../../Data/chipped/boxes_600_num_10.npy'
-        classes_filename = '../../../Data/chipped/classes_600_num_10.npy'
+        images_filename = '/home/ubuntu/Project/Data/chipped/images_600_num_10.npy'
+        boxes_filename = '/home/ubuntu/Project/Data/chipped/boxes_600_num_10.npy'
+        classes_filename = '/home/ubuntu/Project/Data/chipped/classes_600_num_10.npy'
 
         self.images = np.load(images_filename, encoding='bytes')
         self.boxes = np.load(boxes_filename, encoding='bytes')
@@ -93,7 +93,7 @@ class XVIEWBboxDataset:
         self.use_difficult = use_difficult
         self.return_difficult = return_difficult
         self.label_names = XVIEW_BBOX_LABEL_NAMES
-        self.label_map = map_labels_contiguous(osp.join('.', 'xview_labels.txt'))
+        self.label_map = map_labels_contiguous(osp.join(HOME, 'data/xview_labels.txt'))
 
     def __len__(self):
         return len(self.images)
@@ -111,10 +111,10 @@ class XVIEWBboxDataset:
             tuple of an image and bounding boxes
 
         """
-        img = self.images[i]
-        bbox = self.boxes[i]
-        label = self.classes[i]
-        label = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview])
+        img = self.images[i].transpose((2, 0, 1)).astype(dtype=np.float32)
+        bbox = self.boxes[i].astype(dtype=np.float32)
+        img_class_xview = self.classes[i]
+        label = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview]).astype(dtype=np.int32).reshape(-1)
 
         difficult = np.zeros(bbox.shape[0], dtype=np.bool).astype(np.uint8)
         return img, bbox, label, difficult

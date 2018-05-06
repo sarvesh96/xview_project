@@ -102,7 +102,7 @@ def train():
 
 	ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
 	net = ssd_net
-	writer.add_graph(net)
+	# writer.add_graph(net)
 
 	if args.cuda:
 		net = torch.nn.DataParallel(ssd_net)
