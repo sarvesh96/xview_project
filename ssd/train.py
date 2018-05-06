@@ -62,6 +62,12 @@ parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_tr
 					type=str, help='location of _boxes.npy')
 parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_train.npy',
 					type=str, help='location of _classes.npy')
+parser.add_argument('--val_images_filename', default='../../Data/chipped/images_300_val.npy',
+					type=str, help='location of _images.npy')
+parser.add_argument('--val_boxes_filename', default='../../Data/chipped/boxes_300_val.npy',
+					type=str, help='location of _boxes.npy')
+parser.add_argument('--val_classes_filename', default='../../Data/chipped/classes_300_val.npy',
+					type=str, help='location of _classes.npy')
 args = parser.parse_args()
 
 
@@ -88,9 +94,14 @@ def train():
 				  "--dataset_root was not specified.")
 			args.dataset_root = XVIEW_ROOT
 		cfg = xview
-		dataset = XVIEWDetection(args.images_filename,
+		train_dataset = XVIEWDetection(args.images_filename,
 		                         args.boxes_filename,
 								 args.classes_filename,
+								 transform=SSDAugmentation(cfg['min_dim'],
+														   MEANS))
+		val_dataset = XVIEWDetection(args.val_images_filename,
+		                         args.val_boxes_filename,
+								 args.val_classes_filename,
 								 transform=SSDAugmentation(cfg['min_dim'],
 														   MEANS))
 
@@ -138,8 +149,8 @@ def train():
 	epoch = 0
 	print('Loading the dataset...')
 
-	epoch_size = len(dataset) // args.batch_size
-	print('Training SSD on:', dataset.name)
+	epoch_size = len(train_dataset) // args.batch_size
+	print('Training SSD on:', train_dataset.name)
 	print('Using the specified args:')
 	print(args)
 
@@ -147,21 +158,33 @@ def train():
 	global_step = 0
 
 	if args.visdom:
-		vis_title = 'SSD.PyTorch on ' + dataset.name
+		vis_title = 'SSD.PyTorch on ' + train_dataset.name
 		vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
 		iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
 		epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
 
-	data_loader = DataLoader(dataset, args.batch_size,
+	train_data_loader = DataLoader(train_dataset, args.batch_size,
 								  num_workers=args.num_workers,
 								  shuffle=True, collate_fn=detection_collate,
 								  pin_memory=True)
 
+	val_data_loader = DataLoader(val_dataset, args.batch_size,
+								  num_workers=args.num_workers,
+								  shuffle=True, collate_fn=detection_collate,
+								  pin_memory=True)
+
+	eph_num = 0
+
 	# # create batch iterator
-	# batch_iterator = iter(data_loader)
+	# batch_iterator = iter(train_data_loader)
 	# for iteration in range(args.start_iter, cfg['max_iter']):
-	for eph_num in range(args.num_epochs):
-		for iteration, (images, targets) in enumerate(data_loader):
+	# while eph_num < args.num_epochs:
+	while True:
+		eph_num += 1
+
+		for iteration, (images, targets) in enumerate(train_data_loader):
+			global_step += 1
+
 			if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
 				update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
 								'append', epoch_size)
@@ -220,7 +243,30 @@ def train():
 				torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
 						   repr(iteration) + '.pth')
 
-			global_step += 1
+		# Validate Model
+		if eph_num % 2 == 0:
+			running_loc_loss, running_conf_loss = 0.0, 0.0
+			for iteration, (images, targets) in enumerate(val_data_loader):
+				if args.cuda:
+					images = Variable(images.cuda())
+					targets = [Variable(ann.cuda(), requires_grad=True) for ann in targets]
+				else:
+					images = Variable(images)
+					targets = [Variable(ann, requires_grad=True) for ann in targets]
+
+				# forward
+				out = net(images)
+
+				loss_l, loss_c = criterion(out, targets)
+				running_loc_loss += loss_l
+				running_conf_loss += loss_c
+
+			total_loss = running_loc_loss + running_conf_loss
+
+			writer.add_scalar('Val-Loc Loss:', running_loc_loss, global_step)
+			writer.add_scalar('Val-Conf Loss:', running_conf_loss, global_step)
+			writer.add_scalar('Val-Total Loss:', total_loss, global_step)
+
 		torch.save(ssd_net.state_dict(),
 				   args.save_folder + '' + args.dataset + '_1.pth')
 
