@@ -14,6 +14,7 @@ from utils import array_tool as at
 from utils.vis_tool import visdom_bbox
 from utils.eval_tool import eval_detection_voc
 
+from tensorboardX import SummaryWriter
 # fix for ulimit
 # https://github.com/pytorch/pytorch/issues/973#issuecomment-346405667
 import resource
@@ -63,6 +64,7 @@ def train(**kwargs):
                                        pin_memory=True
                                        )
     faster_rcnn = FasterRCNNVGG16()
+    writer = SummaryWriter('outputs/logs/')
     print('model construct completed')
     trainer = FasterRCNNTrainer(faster_rcnn).cuda()
     if opt.load_path:
@@ -74,7 +76,7 @@ def train(**kwargs):
     lr_ = opt.lr
     for epoch in range(opt.epoch):
         trainer.reset_meters()
-        for ii, (img, bbox_, label_, scale) in tqdm(enumerate(dataloader)):
+        for ii, (img, bbox_, label_, scale) in enumerate(dataloader):
             scale = at.scalar(scale)
             img, bbox, label = img.cuda().float(), bbox_.cuda(), label_.cuda()
             img, bbox, label = Variable(img), Variable(bbox), Variable(label)
@@ -106,8 +108,14 @@ def train(**kwargs):
                 trainer.vis.text(str(trainer.rpn_cm.value().tolist()), win='rpn_cm')
                 # roi confusion matrix
                 trainer.vis.img('roi_cm', at.totensor(trainer.roi_cm.conf, False).float())
-            if ii == 2:
-                break
+            if ii % 5 == 4:
+                meter_data_trainer = trainer.get_meter_data()
+                rpn_loc_loss = meter_data_trainer['rpn_loc_loss']
+                rpn_cls_loss = meter_data_trainer['rpn_cls_loss']
+                roi_loc_loss = meter_data_trainer['roi_loc_loss']
+                roi_cls_loss = meter_data_trainer['roi_cls_loss']
+                total_loss = meter_data_trainer['total_loss']
+                print('lr:{:>7.4f}, rpn_loc_loss:{:>7.6f}, rpn_cls_loss:{:>7.6f}, roi_loc_loss:{:>7.6f}, roi_cls_loss:{:>7.6f}, total_loss:{:>7.6f}'.format(lr_, 0.0, rpn_loc_loss, rpn_cls_loss, roi_loc_loss, roi_cls_loss, total_loss))
         eval_result = eval(test_dataloader, faster_rcnn, test_num=opt.test_num)
 
         if eval_result['map'] > best_map:
@@ -119,13 +127,26 @@ def train(**kwargs):
             lr_ = lr_ * opt.lr_decay
 
         trainer.vis.plot('test_map', eval_result['map'])
-        log_info = 'lr:{}, map:{},loss:{}'.format(str(lr_),
-                                                  str(eval_result['map']),
-                                                  str(trainer.get_meter_data()))
+        log_info = 'lr:{:>10.4f}, map:{}, loss:{}'.format(lr_, str(eval_result['map']), str(trainer.get_meter_data()))
+
         print(log_info)
+        meter_data_trainer = trainer.get_meter_data()
+        rpn_loc_loss = meter_data_trainer['rpn_loc_loss']
+        rpn_cls_loss = meter_data_trainer['rpn_cls_loss']
+        roi_loc_loss = meter_data_trainer['roi_loc_loss']
+        roi_cls_loss = meter_data_trainer['roi_cls_loss']
+        total_loss = meter_data_trainer['total_loss']
+
+        writer.add_scalar("Learning Rate:", lr_)
+        writer.add_scalar("Train map:", eval_result['map'])
+        writer.add_scalar("Rpn Loc Loss:", rpn_loc_loss)
+        writer.add_scalar("Rpn Cls Loss:", rpn_cls_loss)
+        writer.add_scalar("Roi Loc Loss:", roi_loc_loss)
+        writer.add_scalar("Roi Cls Loss:", roi_cls_loss)
+        writer.add_scalar("Total Loss:", rpn_loc_loss)
         trainer.vis.log(log_info)
-        if epoch == 13:
-            break
+
+    writer.close()
 
 
 if __name__ == '__main__':

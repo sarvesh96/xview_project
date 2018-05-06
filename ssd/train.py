@@ -222,7 +222,7 @@ def train():
 
 			global_step += 1
 		torch.save(ssd_net.state_dict(),
-				   args.save_folder + '' + args.dataset + '.pth')
+				   args.save_folder + '' + args.dataset + '_1.pth')
 
 	writer.close()
 

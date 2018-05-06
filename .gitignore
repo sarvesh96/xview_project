@@ -106,4 +106,5 @@ Icon*
 # Weights
 *.pth
 
+frcnn/checkpoints/
 simple-faster-rcnn-pytorch/
