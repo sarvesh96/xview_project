@@ -13,6 +13,7 @@ import torch.backends.cudnn as cudnn
 from data import *
 from ssd import build_ssd
 from torch.autograd import Variable
+from tensorboardX import SummaryWriter
 from layers.modules import MultiBoxLoss
 from utils.augmentations import SSDAugmentation
 from torch.utils.data.dataloader import DataLoader
@@ -97,8 +98,11 @@ def train():
 		import visdom
 		viz = visdom.Visdom()
 
+	writer = SummaryWriter('outputs/logs/')
+
 	ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
 	net = ssd_net
+	writer.add_graph(net)
 
 	if args.cuda:
 		net = torch.nn.DataParallel(ssd_net)
@@ -140,6 +144,7 @@ def train():
 	print(args)
 
 	step_index = 0
+	global_step = 0
 
 	if args.visdom:
 		vis_title = 'SSD.PyTorch on ' + dataset.name
@@ -186,7 +191,12 @@ def train():
 			# backprop
 			optimizer.zero_grad()
 			loss_l, loss_c = criterion(out, targets)
+
 			loss = loss_l + loss_c
+
+			writer.add_scalar('Train-Loc Loss:', loss_l, global_step)
+			writer.add_scalar('Train-Conf Loss:', loss_c, global_step)
+			writer.add_scalar('Train-Total Loss:', loss, global_step)
 
 			loss.backward()
 			optimizer.step()
@@ -209,8 +219,12 @@ def train():
 				print('Saving state, iter:', iteration)
 				torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
 						   repr(iteration) + '.pth')
+
+			global_step += 1
 		torch.save(ssd_net.state_dict(),
 				   args.save_folder + '' + args.dataset + '.pth')
+
+	writer.close()
 
 
 def adjust_learning_rate(optimizer, gamma, step):
