@@ -7,6 +7,7 @@ from pprint import pprint
 
 class Config:
     # data
+    xview_data_dir = '../../../Data/chipped'
     min_size = 600  # image resize
     max_size = 600 # image resize
     num_workers = 8

@@ -45,7 +45,7 @@ class FasterRCNNTrainer(nn.Module):
         self.rpn_sigma = opt.rpn_sigma
         self.roi_sigma = opt.roi_sigma
 
-        # target creator create gt_bbox gt_label etc as training targets. 
+        # target creator create gt_bbox gt_label etc as training targets.
         self.anchor_target_creator = AnchorTargetCreator()
         self.proposal_target_creator = ProposalTargetCreator()
 
@@ -106,7 +106,7 @@ class FasterRCNNTrainer(nn.Module):
         roi = rois
 
         # Sample RoIs and forward
-        # it's fine to break the computation graph of rois, 
+        # it's fine to break the computation graph of rois,
         # consider them as constant input
         sample_roi, gt_roi_loc, gt_roi_label = self.proposal_target_creator(
             roi,
@@ -146,9 +146,7 @@ class FasterRCNNTrainer(nn.Module):
         roi_loc = roi_cls_loc[t.arange(0, n_sample).long().cuda(), \
                               at.totensor(gt_roi_label).long()]
         gt_roi_label = at.tovariable(gt_roi_label).long()
-        # print('gt_roi_loc was ', type(gt_roi_loc))
         gt_roi_loc = at.tovariable(gt_roi_loc)
-        # print('gt_roi_loc is ', type(gt_roi_loc))
 
         roi_loc_loss = _fast_rcnn_loc_loss(
             roi_loc.contiguous(),
@@ -181,7 +179,7 @@ class FasterRCNNTrainer(nn.Module):
             save_optimizer (bool): whether save optimizer.state_dict().
             save_path (string): where to save model, if it's None, save_path
                 is generate using time str and info from kwargs.
-        
+
         Returns:
             save_path(str): the path to save models.
         """
@@ -235,7 +233,7 @@ class FasterRCNNTrainer(nn.Module):
 
 def _smooth_l1_loss(x, t, in_weight, sigma):
     sigma2 = sigma ** 2
-    diff = in_weight.float() * (x.float() - t.float())
+    diff = in_weight * (x - t)
     abs_diff = diff.abs()
     flag = (abs_diff.data < (1. / sigma2)).float()
     flag = Variable(flag)
@@ -245,9 +243,9 @@ def _smooth_l1_loss(x, t, in_weight, sigma):
 
 
 def _fast_rcnn_loc_loss(pred_loc, gt_loc, gt_label, sigma):
-    in_weight = t.cuda.FloatTensor(gt_loc.shape).fill_(0)
+    in_weight = t.zeros(gt_loc.shape).cuda()
     # Localization loss is calculated only for positive rois.
-    # NOTE:  unlike origin implementation, 
+    # NOTE:  unlike origin implementation,
     # we don't need inside_weight and outside_weight, they can calculate by gt_label
     in_weight[(gt_label > 0).view(-1, 1).expand_as(in_weight).cuda()] = 1
     loc_loss = _smooth_l1_loss(pred_loc, gt_loc, Variable(in_weight), sigma)

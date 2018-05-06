@@ -1,155 +1,128 @@
 import os
-import PIL
-import cv2
-import sys
-import torch
-import os.path as osp
-
-from .config import HOME
-from torch.utils.data.dataset import Dataset
+import xml.etree.ElementTree as ET
 
 import numpy as np
-import itertools
 
 from .util import read_image
 
-XVIEW_ROOT = osp.join(HOME, "")
 
 def map_labels_contiguous(label_file):
-	label_map = {}
-	labels = open(label_file, 'r')
-	for line in labels:
-		ids = line.split(',')
-		label_map[int(ids[0])] = int(ids[1])
-	return label_map
+    label_map = {}
+    labels = open(label_file, 'r')
+    for line in labels:
+        ids = line.split(',')
+        label_map[int(ids[0])] = int(ids[1])
+    return label_map
 
 
-# class XVIEWAnnotationTransform(object):
-# 	"""Transforms a Xview annotation into a Tensor of bbox coords and label index
-# 	Initilized with a dictionary lookup of classnames to indexes
-# 	Arguments:
-# 		class_to_ind (dict, optional): dictionary lookup of classnames -> indexes
-# 			(default: alphabetic indexing of Xview's 60 classes)
-# 	"""
-#
-# 	def __init__(self):
-# 		self.label_map = map_labels_contiguous(osp.join(XVIEW_ROOT, 'xview_labels.txt'))
-#
-# 	def __call__(self, bounding_boxes, img_class_xview):
-# 		"""
-# 		Arguments:
-# 			bounding_boxes (np.ndarray): 2D array containing [xmin, ymin, xmin, xmax] of multiple
-# 										classes identified in the given image
-# 			img_class_xview (np.ndarray): 1D array containing class ID of the respective boxes
-# 		Returns:
-# 			2D np.ndarray containing lists of bounding boxes and labels associated [bbox coords, class name]
-# 		"""
-# 		img_class = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview])
-# 		# res = np.hstack((bounding_boxes, img_class))
-#
-# 		return bounding_boxes, img_class  # [[xmin, ymin, xmax, ymax, label_ind], ... ]
+class XVIEWBboxDataset:
+    """Bounding box dataset for PASCAL `VOC`_.
 
+    .. _`VOC`: http://host.robots.ox.ac.uk/pascal/VOC/voc2012/
 
-class XVIEWDetection(Dataset):
-    """XVIEW Detection Dataset Object
-    input is image, target is annotation
-    Arguments:
-        root (string): filepath to XVIEW folder.
-        image_set (string): imageset to use (eg. 'train', 'val', 'test')
-        transform (callable, optional): transformation to perform on the
-            input image
-        target_transform (callable, optional): transformation to perform on the
-            target `annotation`
-            (eg: take in caption string, return tensor of word indices)
-        dataset_name (string, optional): which dataset to load
-            (default: 'XVIEW')
+    The index corresponds to each image.
+
+    When queried by an index, if :obj:`return_difficult == False`,
+    this dataset returns a corresponding
+    :obj:`img, bbox, label`, a tuple of an image, bounding boxes and labels.
+    This is the default behaviour.
+    If :obj:`return_difficult == True`, this dataset returns corresponding
+    :obj:`img, bbox, label, difficult`. :obj:`difficult` is a boolean array
+    that indicates whether bounding boxes are labeled as difficult or not.
+
+    The bounding boxes are packed into a two dimensional tensor of shape
+    :math:`(R, 4)`, where :math:`R` is the number of bounding boxes in
+    the image. The second axis represents attributes of the bounding box.
+    They are :math:`(y_{min}, x_{min}, y_{max}, x_{max})`, where the
+    four attributes are coordinates of the top left and the bottom right
+    vertices.
+
+    The labels are packed into a one dimensional tensor of shape :math:`(R,)`.
+    :math:`R` is the number of bounding boxes in the image.
+    The class name of the label :math:`l` is :math:`l` th element of
+    :obj:`XVIEW_BBOX_LABEL_NAMES`.
+
+    The array :obj:`difficult` is a one dimensional boolean array of shape
+    :math:`(R,)`. :math:`R` is the number of bounding boxes in the image.
+    If :obj:`use_difficult` is :obj:`False`, this array is
+    a boolean array with all :obj:`False`.
+
+    The type of the image, the bounding boxes and the labels are as follows.
+
+    * :obj:`img.dtype == numpy.float32`
+    * :obj:`bbox.dtype == numpy.float32`
+    * :obj:`label.dtype == numpy.int32`
+    * :obj:`difficult.dtype == numpy.bool`
+
+    Args:
+        data_dir (string): Path to the root of the training data.
+            i.e. "/data/image/voc/VOCdevkit/VOC2007/"
+        split ({'train', 'val', 'trainval', 'test'}): Select a split of the
+            dataset. :obj:`test` split is only available for
+            2007 dataset.
+        year ({'2007', '2012'}): Use a dataset prepared for a challenge
+            held in :obj:`year`.
+        use_difficult (bool): If :obj:`True`, use images that are labeled as
+            difficult in the original annotation.
+        return_difficult (bool): If :obj:`True`, this dataset returns
+            a boolean array
+            that indicates whether bounding boxes are labeled as difficult
+            or not. The default value is :obj:`False`.
+
     """
 
-    def __init__(self, images_filename, boxes_filename, classes_filename,
-                 transform=None, target_transform=None,
-                 dataset_name='XVIEW'):
+    def __init__(self, data_dir, split='trainval',
+                 use_difficult=False, return_difficult=False,
+                 ):
 
-        self.transform = transform
-        self.target_transform = target_transform
-        self.name = dataset_name
+        # if split not in ['train', 'trainval', 'val']:
+        #     if not (split == 'test' and year == '2007'):
+        #         warnings.warn(
+        #             'please pick split from \'train\', \'trainval\', \'val\''
+        #             'for 2012 dataset. For 2007 dataset, you can pick \'test\''
+        #             ' in addition to the above mentioned splits.'
+        #         )
+        images_filename = '../../../Data/chipped/images_600_num_10.npy'
+        boxes_filename = '../../../Data/chipped/boxes_600_num_10.npy'
+        classes_filename = '../../../Data/chipped/classes_600_num_10.npy'
 
         self.images = np.load(images_filename, encoding='bytes')
         self.boxes = np.load(boxes_filename, encoding='bytes')
         self.classes = np.load(classes_filename, encoding='bytes')
 
-    def __getitem__(self, index):
-        img = self.images[index]
-        boxes = self.boxes[index]
-        classes = self.classes[index]
-
-        if self.target_transform is not None:
-            target_bbox, target_labels = self.target_transform(self.boxes[index], self.classes[index])
-
-        if self.transform is not None:
-            # target = np.hstack((target_bbox, target_labels))
-            # target = np.array(target)
-            img, boxes, classes = self.transform(img, boxes, classes)
-            # to rgb
-            img = img[:, :, (2, 1, 0)]
-            # img = img.transpose(2, 0, 1)
-            # target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
-        difficult = False
-        # CONVERT LABELS/BOXES TO TORCH?
-        return np.transpose(img, (2, 0, 1)), boxes, np.expand_dims(classes, axis=1), False
+        self.use_difficult = use_difficult
+        self.return_difficult = return_difficult
+        self.label_names = XVIEW_BBOX_LABEL_NAMES
+        self.label_map = map_labels_contiguous(osp.join('.', 'xview_labels.txt'))
 
     def __len__(self):
-        return self.images.shape[0]
+        return len(self.images)
 
-    def pull_item(self, index):
-        # Implemented as __getitem__
-        self.__getitem__(index)
+    def get_example(self, i):
+        """Returns the i-th example.
 
-    def pull_image(self, index):
-        '''Returns the original image object at index in PIL form
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
-        Argument:
-            index (int): index of img to show
-        Return:
-            PIL img
-        '''
-        return cv2.imread(self.images[index], mode=None)  # Mode will be determined from type if None
+        Returns a color image and bounding boxes. The image is in CHW format.
+        The returned image is RGB.
 
-    def pull_anno(self, index):
-        '''Returns the original annotation of image at index
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
-        Argument:
-            index (int): index of img to get annotation of
-        Return:
-            list:  [img_id, [(label, bbox coords),...]]
-                eg: ('001718', [('dog', (96, 13, 438, 332))])
-        '''
-        img_id = str(index)
-        gt = self.target_transform(self.boxes[index], self.classes[index])
+        Args:
+            i (int): The index of the example.
 
-        return img_id, gt
+        Returns:
+            tuple of an image and bounding boxes
 
-    def pull_tensor(self, index):
-        '''Returns the original image at an index in tensor form
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
-        Argument:
-            index (int): index of img to show
-        Return:
-            tensorized version of img, squeezed
-        '''
-        return torch.Tensor(self.images[index].unsqueeze_(0))
+        """
+        img = self.images[i]
+        bbox = self.boxes[i]
+        label = self.classes[i]
+        label = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview])
 
-xview_id = [0, 1, 11, 12, 13, 15, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42,
-            44, 45, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65, 66, 71, 72, 73, 74, 76, 77,
-            79, 83, 84, 86, 89, 91, 93, 94]
+        difficult = np.zeros(bbox.shape[0], dtype=np.bool).astype(np.uint8)
+        return img, bbox, label, difficult
 
-xview_class_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-         30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-         57, 58, 59, 60, 61]
+    __getitem__ = get_example
 
-xview_class_names = ('__background__', '__noclass__', 'fixed_wing_aircraft', 'small_aircraft', 'passenger_OR_cargo_plane', 'helicopter',
+
+XVIEW_BBOX_LABEL_NAMES = ('__noclass__', 'fixed_wing_aircraft', 'small_aircraft', 'passenger_OR_cargo_plane', 'helicopter',
                'passenger_vehicle', 'small_car', 'bus', 'pickup_truck', 'utility_truck', 'truck', 'cargo_truck',
                'truck_tractor_with_box_trailer', 'truck_tractor', 'trailer', 'truck_tractor_with_flatbed_trailer',
                'truck_tractor_with_liquid_tank', 'crane_truck', 'railway_vehicle', 'passenger_car',
@@ -160,7 +133,3 @@ xview_class_names = ('__background__', '__noclass__', 'fixed_wing_aircraft', 'sm
                'cement_mixer', 'ground_grader', 'hut_OR_tent', 'shed', 'building', 'aircraft_hangar',
                'damaged_OR_demolished_building', 'facility', 'construction_site', 'vehicle_lot',
                'helipad,storage_tank', 'shipping_container_lot', 'shipping_container', 'pylon', 'tower')
-
-xview_idToIndex = dict(zip(xview_id, xview_class_indices))
-xview_idToClass = dict(zip(xview_id, xview_class_names))
-xview_indexToId = dict(zip(xview_class_indices, xview_id))

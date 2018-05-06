@@ -8,31 +8,20 @@ import visdom
 matplotlib.use('Agg')
 from matplotlib import pyplot as plot
 
-# from data.voc_dataset import VOC_BBOX_LABEL_NAMES
+# from data.voc_dataset import XVIEW_BBOX_LABEL_NAMES
 
 
-VOC_BBOX_LABEL_NAMES = (
-    'fly',
-    'bike',
-    'bird',
-    'boat',
-    'pin',
-    'bus',
-    'c',
-    'cat',
-    'chair',
-    'cow',
-    'table',
-    'dog',
-    'horse',
-    'moto',
-    'p',
-    'plant',
-    'shep',
-    'sofa',
-    'train',
-    'tv',
-)
+XVIEW_BBOX_LABEL_NAMES = ('__noclass__', 'fixed_wing_aircraft', 'small_aircraft', 'passenger_OR_cargo_plane', 'helicopter',
+               'passenger_vehicle', 'small_car', 'bus', 'pickup_truck', 'utility_truck', 'truck', 'cargo_truck',
+               'truck_tractor_with_box_trailer', 'truck_tractor', 'trailer', 'truck_tractor_with_flatbed_trailer',
+               'truck_tractor_with_liquid_tank', 'crane_truck', 'railway_vehicle', 'passenger_car',
+               'cargo_OR_container_car', 'flat_car', 'tank_car', 'locomotive', 'maritime_vessel', 'motorboat',
+               'sailboat', 'tugboat', 'barge', 'fishing_vessel', 'ferry', 'yacht', 'container_ship', 'oil_tanker',
+               'engineering_vehicle', 'tower_crane', 'container_crane', 'reach_stacker', 'straddle_carrier',
+               'mobile_crane', 'dump_truck', 'haul_truck', 'tractor', 'front_loader_OR_bulldozer', 'excavator',
+               'cement_mixer', 'ground_grader', 'hut_OR_tent', 'shed', 'building', 'aircraft_hangar',
+               'damaged_OR_demolished_building', 'facility', 'construction_site', 'vehicle_lot',
+               'helipad,storage_tank', 'shipping_container_lot', 'shipping_container', 'pylon', 'tower')
 
 
 def vis_image(img, ax=None):
@@ -88,7 +77,7 @@ def vis_bbox(img, bbox, label=None, score=None, ax=None):
 
     """
 
-    label_names = list(VOC_BBOX_LABEL_NAMES) + ['bg']
+    label_names = list(XVIEW_BBOX_LABEL_NAMES) + ['bg']
     # add for index `-1`
     if label is not None and not len(bbox) == len(label):
         raise ValueError('The length of label must be same as that of bbox')
@@ -130,7 +119,7 @@ def vis_bbox(img, bbox, label=None, score=None, ax=None):
 
 def fig2data(fig):
     """
-    brief Convert a Matplotlib figure to a 4D numpy array with RGBA 
+    brief Convert a Matplotlib figure to a 4D numpy array with RGBA
     channels and return it
 
     @param fig： a matplotlib figure
@@ -169,7 +158,7 @@ def visdom_bbox(*args, **kwargs):
 class Visualizer(object):
     """
     wrapper for visdom
-    you can still access naive visdom function by 
+    you can still access naive visdom function by
     self.line, self.scater,self._send,etc.
     due to the implementation of `__getattr__`
     """

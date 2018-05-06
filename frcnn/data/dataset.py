@@ -5,13 +5,7 @@ from torchvision import transforms as tvtsf
 from . import util
 import numpy as np
 from utils.config import opt
-import os.path as osp
 
-from .config import HOME
-
-IMAGES_FILENAME = osp.join(HOME, "data/images_600_num_10.npy")
-BOXES_FILENAME = osp.join(HOME, "data/boxes_600_num_10.npy")
-CLASSES_FILENAME = osp.join(HOME, "data/classes_600_num_10.npy")
 
 def inverse_normalize(img):
     if opt.caffe_pretrain:
@@ -67,7 +61,7 @@ def preprocess(img, min_size=600, max_size=1000):
     scale1 = min_size / min(H, W)
     scale2 = max_size / max(H, W)
     scale = min(scale1, scale2)
-    img = img / 255
+    img = img / 255.
     img = sktsf.resize(img, (C, H * scale, W * scale), mode='reflect')
     # both the longer and shorter should be less than
     # max_size and min_size
@@ -104,11 +98,12 @@ class Transform(object):
 class Dataset:
     def __init__(self, opt):
         self.opt = opt
-        self.db = XVIEWDetection(IMAGES_FILENAME, BOXES_FILENAME, CLASSES_FILENAME)
+        self.db = XVIEWBboxDataset(opt.voc_data_dir)
         self.tsf = Transform(opt.min_size, opt.max_size)
 
     def __getitem__(self, idx):
-        ori_img, bbox, label, difficult = self.db.__getitem__(idx)
+        ori_img, bbox, label, difficult = self.db.get_example(idx)
+
         img, bbox, label, scale = self.tsf((ori_img, bbox, label))
         # TODO: check whose stride is negative to fix this instead copy all
         # some of the strides of a given numpy array are negative.
@@ -119,12 +114,12 @@ class Dataset:
 
 
 class TestDataset:
-    def __init__(self, opt, split='test', use_difficult=False):
+    def __init__(self, opt, split='test', use_difficult=True):
         self.opt = opt
-        self.db = XVIEWDetection(IMAGES_FILENAME, BOXES_FILENAME, CLASSES_FILENAME)
+        self.db = XVIEWBboxDataset(opt.voc_data_dir, split=split, use_difficult=use_difficult)
 
     def __getitem__(self, idx):
-        ori_img, bbox, label, difficult = self.db.__getitem__(idx)
+        ori_img, bbox, label, difficult = self.db.get_example(idx)
         img = preprocess(ori_img)
         return img, ori_img.shape[1:], bbox, label, difficult
 

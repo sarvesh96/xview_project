@@ -73,7 +73,7 @@ class XVIEWAnnotationTransform(object):
 		Returns:
 			2D np.ndarray containing lists of bounding boxes and labels associated [bbox coords, class name]
 		"""
-		img_class = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview])
+		img_class = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]] for x in img_class_xview])
 		bounding_boxes[:, [0, 2]] /= width
 		bounding_boxes[:, [1, 3]] /= height
 		res = np.hstack((bounding_boxes, img_class))

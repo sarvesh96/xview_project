@@ -15,18 +15,14 @@ def tonumpy(data):
 
 
 def totensor(data, cuda=True):
-    try:
-        if isinstance(data, np.ndarray):
-            tensor = t.from_numpy(data)
-        if isinstance(data, t._TensorBase):
-            tensor = data
-        if isinstance(data, t.autograd.Variable):
-            tensor = data.data
-        if cuda:
-            # print('tensor type', type(tensor))
-            tensor = tensor.cuda()
-    except Exception as error:
-        print('data type which caused exception:', type(tensor), repr(error))
+    if isinstance(data, np.ndarray):
+        tensor = t.from_numpy(data)
+    if isinstance(data, t._TensorBase):
+        tensor = data
+    if isinstance(data, t.autograd.Variable):
+        tensor = data.data
+    if cuda:
+        tensor = tensor.cuda()
     return tensor
 
 
