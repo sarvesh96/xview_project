@@ -11,3 +11,7 @@ INFO:tornado.access:200 POST /events (127.0.0.1) 0.56ms
 INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
 INFO:tornado.access:200 POST /events (127.0.0.1) 0.60ms
 INFO:tornado.access:200 POST /events (127.0.0.1) 0.58ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.59ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.60ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.81ms
+INFO:tornado.access:200 POST /events (127.0.0.1) 0.41ms
