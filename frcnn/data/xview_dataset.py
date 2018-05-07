@@ -113,6 +113,7 @@ class XVIEWBboxDataset:
         """
         img = self.images[i].transpose((2, 0, 1)).astype(dtype=np.float32)
         bbox = self.boxes[i].astype(dtype=np.float32)
+        bbox = bbox[:, [1, 0, 3, 2]]
         img_class_xview = self.classes[i]
         label = np.array([[self.label_map[int(x)]] if x in self.label_map else [self.label_map[0]]for x in img_class_xview]).astype(dtype=np.int32).reshape(-1)
 
