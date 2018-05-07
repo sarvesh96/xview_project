@@ -38,8 +38,8 @@ parser.add_argument('--start_iter', default=0, type=int,
 					help='Resume training at this iter')
 parser.add_argument('--num_workers', default=4, type=int,
 					help='Number of workers used in dataloading')
-parser.add_argument('--cuda', default=True, action='store_true',
-					help='Use CUDA to train model')
+parser.add_argument('--cuda', default=True, action='store_false',
+					help='Do not use CUDA to train model')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
 					help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float,
@@ -48,7 +48,7 @@ parser.add_argument('--weight_decay', default=5e-4, type=float,
 					help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.1, type=float,
 					help='Gamma update for SGD')
-parser.add_argument('--visdom', action='store_false',
+parser.add_argument('--visdom', action='store_true',
 					help='Use visdom for loss visualization')
 parser.add_argument('--save_folder', default='weights/',
 					help='Directory for saving checkpoint models')
