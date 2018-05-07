@@ -58,6 +58,8 @@ parser.add_argument('--logdir', default='outputs/logs/', type=str,
 					help='tensorboard log directory.')
 parser.add_argument('--start_global_step', default=0, type=int,
 					help='Resume global_step value at this step.')
+parser.add_argument('--validate', default=False, action='store_true',
+					help='If set to True, validation scores are calculated.')
 parser.add_argument('--images_filename', type=str,
 					default='../../Data/chipped/images_300_train.npy',
 					help='location of _images.npy')
@@ -76,9 +78,11 @@ parser.add_argument('--val_boxes_filename', type=str,
 parser.add_argument('--val_classes_filename', type=str,
                     default='../../Data/chipped/classes_300_val.npy',
 					help='location of _classes.npy')
-parser.add_argument('--validate', type=str,
-                    default='../../Data/chipped/classes_300_val.npy',
-					help='If set to True, validation scores are calculated.')
+parser.add_argument('--print_to_file', default=False, action='store_true',
+					help='If set to True, outputs are printed to file. \
+						  Requires the print_filename argument to be given.')
+parser.add_argument('--print_filename', default="outputs/log.txt", type=str,
+					help='File path and name to store the outputs.')
 args = parser.parse_args()
 
 
@@ -99,9 +103,10 @@ if not os.path.exists(args.logdir):
 if args.visdom:
 	viz = visdom.Visdom()
 
+if args.print_to_file:
+	f = open(args.print_filename, 'w')
 
 def train():
-	f = open('out_logs.txt', 'w')
 	if args.dataset == 'XVIEW':
 		if args.dataset_root != XVIEW_ROOT:
 			if not os.path.exists(XVIEW_ROOT):
@@ -171,8 +176,10 @@ def train():
 	if args.visdom:
 		vis_title = 'SSD.PyTorch on ' + train_dataset.name
 		vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
+		val_plot = create_vis_plot('Validation', 'Loss', vis_title, vis_legend)
 		iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
 		epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
+
 
 	train_data_loader = DataLoader(train_dataset, args.batch_size,
 								  num_workers=args.num_workers,
@@ -250,19 +257,26 @@ def train():
 			if args.visdom:
 				init_epoch = True if eph_num == 0 else False
 				update_vis_plot(iteration, loss_l.data, loss_c.data,
-								iter_plot, epoch_plot, 'append', init_epoch=init_epoch)
+								iter_plot, epoch_plot, 'append',
+								init_epoch=init_epoch)
 
-			if iteration != 0 and iteration % 5000 == 0:
-				print('Saving state, iter:', iteration)
-				torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
-						   repr(iteration) + '.pth')
+			# if iteration != 0 and iteration % 5000 == 0:
+			# 	print('Saving state, iter:', iteration)
+			# 	torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
+			# 			   repr(iteration) + '.pth')
 
-		torch.save(ssd_net.state_dict(),
-				   args.save_folder + '' + args.dataset + '_' + str(eph_num) + '_new.pth')
+		if eph_num % 3 == 0:
+			print('Saving state, epoch:', eph_num)
+			state_dict_filename = args.dataset + '_' + str(eph_num) + '_new.pth'
+			torch.save(ssd_net.state_dict(),
+					   args.save_folder + state_dict_filename)
 
 		# Validate Model
 		if args.validate and eph_num % 2 == 0:
+			print('Validating Model...')
 			running_loc_loss, running_conf_loss, iters = 0.0, 0.0, 0
+			t0 = time.time()
+
 			for iteration, (images, targets) in enumerate(val_data_loader):
 				if args.cuda:
 					images = Variable(images.cuda())
@@ -279,9 +293,20 @@ def train():
 				running_conf_loss += loss_c.data
 				iters += 1
 
+			t1 = time.time()
 			running_loc_loss /= iters
 			running_conf_loss /= iters
 			total_loss = running_loc_loss + running_conf_loss
+
+			print('timer: %.4f sec.' % (t1 - t0))
+			print('epoch ' + str(eph_num) + ' || Loss: %.4f ||' % (total_loss))
+			f.write('timer: %.4f sec.\n' % (t1 - t0))
+			f.write('epoch ' + str(eph_num) + ' || Loss: %.4f ||\n' % (total_loss))
+
+			if args.visdom:
+				init_epoch = True if eph_num == 2 else False
+				update_vis_plot(eph_num//2, running_loc_loss, running_conf_loss,
+								val_plot, None, 'append', init_epoch=init_epoch)
 
 			writer.add_scalar('Val-Loc Loss:', running_loc_loss, global_step)
 			writer.add_scalar('Val-Conf Loss:', running_conf_loss, global_step)
