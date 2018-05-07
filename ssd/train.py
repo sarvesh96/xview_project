@@ -86,6 +86,7 @@ if not os.path.exists(args.save_folder):
 
 
 def train():
+	f_out = open('out_logs.txt', 'w')
 	if args.dataset == 'XVIEW':
 		if args.dataset_root != XVIEW_ROOT:
 			if not os.path.exists(XVIEW_ROOT):
@@ -109,7 +110,7 @@ def train():
 		import visdom
 		viz = visdom.Visdom()
 
-	writer = SummaryWriter('outputs/logs/')
+	writer = SummaryWriter('outputs/log_final1/')
 
 	ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
 	net = ssd_net
@@ -233,6 +234,8 @@ def train():
 			if iteration % 10 == 0:
 				print('timer: %.4f sec.' % (t1 - t0))
 				print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data))#, end=' ')
+				f.write('timer: %.4f sec.\n' % (t1 - t0))
+				f.write('iter ' + repr(iteration) + ' || Loss: %.4f ||\n' % (loss.data))
 
 			if args.visdom:
 				update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
