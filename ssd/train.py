@@ -251,8 +251,9 @@ def train():
 			if iteration % 10 == 0:
 				print('timer: %.4f sec.' % (t1 - t0))
 				print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data))#, end=' ')
-				f.write('timer: %.4f sec.\n' % (t1 - t0))
-				f.write('iter ' + repr(iteration) + ' || Loss: %.4f ||\n' % (loss.data))
+				if args.print_to_file:
+					f.write('timer: %.4f sec.\n' % (t1 - t0))
+					f.write('iter ' + repr(iteration) + ' || Loss: %.4f ||\n' % (loss.data))
 
 			if args.visdom:
 				init_epoch = True if eph_num == 0 else False
@@ -300,8 +301,9 @@ def train():
 
 			print('timer: %.4f sec.' % (t1 - t0))
 			print('epoch ' + str(eph_num) + ' || Loss: %.4f ||' % (total_loss))
-			f.write('timer: %.4f sec.\n' % (t1 - t0))
-			f.write('epoch ' + str(eph_num) + ' || Loss: %.4f ||\n' % (total_loss))
+			if args.print_to_file:
+				f.write('timer: %.4f sec.\n' % (t1 - t0))
+				f.write('epoch ' + str(eph_num) + ' || Loss: %.4f ||\n' % (total_loss))
 
 			if args.visdom:
 				init_epoch = True if eph_num == 2 else False
