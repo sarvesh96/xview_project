@@ -86,7 +86,7 @@ if not os.path.exists(args.save_folder):
 
 
 def train():
-	f_out = open('out_logs.txt', 'w')
+	f = open('out_logs.txt', 'w')
 	if args.dataset == 'XVIEW':
 		if args.dataset_root != XVIEW_ROOT:
 			if not os.path.exists(XVIEW_ROOT):
