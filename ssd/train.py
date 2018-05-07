@@ -248,17 +248,21 @@ def train():
 				f.write('iter ' + repr(iteration) + ' || Loss: %.4f ||\n' % (loss.data))
 
 			if args.visdom:
-				update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
-								iter_plot, epoch_plot, 'append')
+				init_epoch = True if eph_num == 0 else False
+				update_vis_plot(iteration, loss_l.data, loss_c.data,
+								iter_plot, epoch_plot, 'append', init_epoch=init_epoch)
 
 			if iteration != 0 and iteration % 5000 == 0:
 				print('Saving state, iter:', iteration)
 				torch.save(ssd_net.state_dict(), 'weights/ssd300_XVIEW_' +
 						   repr(iteration) + '.pth')
 
+		torch.save(ssd_net.state_dict(),
+				   args.save_folder + '' + args.dataset + '_' + str(eph_num) + '_new.pth')
+
 		# Validate Model
 		if args.validate and eph_num % 2 == 0:
-			running_loc_loss, running_conf_loss = 0.0, 0.0
+			running_loc_loss, running_conf_loss, iters = 0.0, 0.0, 0
 			for iteration, (images, targets) in enumerate(val_data_loader):
 				if args.cuda:
 					images = Variable(images.cuda())
@@ -271,17 +275,17 @@ def train():
 				out = net(images)
 
 				loss_l, loss_c = criterion(out, targets)
-				running_loc_loss += loss_l
-				running_conf_loss += loss_c
+				running_loc_loss += loss_l.data
+				running_conf_loss += loss_c.data
+				iters += 1
 
+			running_loc_loss /= iters
+			running_conf_loss /= iters
 			total_loss = running_loc_loss + running_conf_loss
 
 			writer.add_scalar('Val-Loc Loss:', running_loc_loss, global_step)
 			writer.add_scalar('Val-Conf Loss:', running_conf_loss, global_step)
 			writer.add_scalar('Val-Total Loss:', total_loss, global_step)
-
-		torch.save(ssd_net.state_dict(),
-				   args.save_folder + '' + args.dataset + '_1.pth')
 
 	writer.close()
 
@@ -321,7 +325,7 @@ def create_vis_plot(_xlabel, _ylabel, _title, _legend):
 
 
 def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
-					epoch_size=1):
+					epoch_size=1, init_epoch=False):
 	viz.line(
 		X=torch.ones((1, 3)).cpu() * iteration,
 		Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu() / epoch_size,
@@ -329,7 +333,7 @@ def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
 		update=update_type
 	)
 	# initialize epoch plot on first iteration
-	if iteration == 0:
+	if init_epoch and iteration == 0:
 		viz.line(
 			X=torch.zeros((1, 3)).cpu(),
 			Y=torch.Tensor([loc, conf, loc + conf]).unsqueeze(0).cpu(),
