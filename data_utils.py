@@ -50,7 +50,7 @@ class image_dataset(Dataset):
             self.get_labels(json_data)
 
             self.images, self.boxes, classes = [], [], []
-            for filename in tqdm(file_names[:10]):
+            for filename in tqdm(file_names[265:]):
                 img = np.array(Image.open(filename))
                 img_name = filename.split("/")[-1]
 
@@ -67,9 +67,9 @@ class image_dataset(Dataset):
             self.boxes = np.array(self.boxes)
             self.classes = np.array(classes)
 
-            np.save(chip_dir_name + 'images_600_num_10.npy', self.images)
-            np.save(chip_dir_name + 'classes_600_num_10.npy', self.classes)
-            np.save(chip_dir_name + 'boxes_600_num_10.npy', self.boxes)
+            np.save(chip_dir_name + 'images_600_valid.npy', self.images)
+            np.save(chip_dir_name + 'classes_600_valid.npy', self.classes)
+            np.save(chip_dir_name + 'boxes_600_valid.npy', self.boxes)
 
 
     def __getitem__(self, index):

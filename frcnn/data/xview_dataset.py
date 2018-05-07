@@ -4,7 +4,7 @@ import numpy as np
 
 from .util import read_image
 
-HOME = '/home/ubuntu/Project/xview_project/frcnn/'
+HOME = '/home/ubuntu/frcnn/xview_project/frcnn/'
 
 def map_labels_contiguous(label_file):
     label_map = {}
@@ -82,9 +82,9 @@ class XVIEWBboxDataset:
         #             'for 2012 dataset. For 2007 dataset, you can pick \'test\''
         #             ' in addition to the above mentioned splits.'
         #         )
-        images_filename = '/home/ubuntu/Project/Data/chipped/images_600_num_10.npy'
-        boxes_filename = '/home/ubuntu/Project/Data/chipped/boxes_600_num_10.npy'
-        classes_filename = '/home/ubuntu/Project/Data/chipped/classes_600_num_10.npy'
+        images_filename = '/home/ubuntu/frcnn/Data/chipped/images_600_train.npy'
+        boxes_filename = '/home/ubuntu/frcnn/Data/chipped/boxes_600_train.npy'
+        classes_filename = '/home/ubuntu/frcnn/Data/chipped/classes_600_train.npy'
 
         self.images = np.load(images_filename, encoding='bytes')
         self.boxes = np.load(boxes_filename, encoding='bytes')
