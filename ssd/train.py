@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import torch
+import visdom
 import argparse
 import numpy as np
 
@@ -19,19 +20,16 @@ from utils.augmentations import SSDAugmentation
 from torch.utils.data.dataloader import DataLoader
 
 
-def str2bool(v):
-	return v.lower() in ("yes", "true", "t", "1")
-
-
 parser = argparse.ArgumentParser(
-	description='Single Shot MultiBox Detector Training With Pytorch')
+	description='Single Shot MultiBox Detector Training for XVIEW Dataset With \
+				 Pytorch')
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--dataset', default='XVIEW', choices=['XVIEW'],
-					type=str, help='XVIEW')
+					type=str, help='Name of Dataset. Choices - [XVIEW]')
 parser.add_argument('--dataset_root', default=XVIEW_ROOT,
 					help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
-					help='Pretrained base model')
+					help='Pretrained base model filename.')
 parser.add_argument('--batch_size', default=32, type=int,
 					help='Batch size for training')
 parser.add_argument('--resume', default=None, type=str,
@@ -40,7 +38,7 @@ parser.add_argument('--start_iter', default=0, type=int,
 					help='Resume training at this iter')
 parser.add_argument('--num_workers', default=4, type=int,
 					help='Number of workers used in dataloading')
-parser.add_argument('--cuda', default=True, type=str2bool,
+parser.add_argument('--cuda', action='store_true',
 					help='Use CUDA to train model')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
 					help='initial learning rate')
@@ -50,39 +48,56 @@ parser.add_argument('--weight_decay', default=5e-4, type=float,
 					help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.1, type=float,
 					help='Gamma update for SGD')
-parser.add_argument('--visdom', default=False, type=str2bool,
+parser.add_argument('--visdom', action='store_false',
 					help='Use visdom for loss visualization')
 parser.add_argument('--save_folder', default='weights/',
 					help='Directory for saving checkpoint models')
 parser.add_argument('--num_epochs', default=10, type=int,
 					help='Number of epochs on the data')
-parser.add_argument('--images_filename', default='../../Data/chipped/images_300_train.npy',
-					type=str, help='location of _images.npy')
-parser.add_argument('--boxes_filename', default='../../Data/chipped/boxes_300_train.npy',
-					type=str, help='location of _boxes.npy')
-parser.add_argument('--classes_filename', default='../../Data/chipped/classes_300_train.npy',
-					type=str, help='location of _classes.npy')
-parser.add_argument('--val_images_filename', default='../../Data/chipped/images_300_val.npy',
-					type=str, help='location of _images.npy')
-parser.add_argument('--val_boxes_filename', default='../../Data/chipped/boxes_300_val.npy',
-					type=str, help='location of _boxes.npy')
-parser.add_argument('--val_classes_filename', default='../../Data/chipped/classes_300_val.npy',
-					type=str, help='location of _classes.npy')
+parser.add_argument('--logdir', default='outputs/logs/', type=str,
+					help='tensorboard log directory.')
+parser.add_argument('--start_global_step', default=0, type=int,
+					help='Resume global_step value at this step.')
+parser.add_argument('--images_filename', type=str,
+					default='../../Data/chipped/images_300_train.npy',
+					help='location of _images.npy')
+parser.add_argument('--boxes_filename', type=str,
+					default='../../Data/chipped/boxes_300_train.npy',
+					help='location of _boxes.npy')
+parser.add_argument('--classes_filename', type=str,
+					default='../../Data/chipped/classes_300_train.npy',
+					help='location of _classes.npy')
+parser.add_argument('--val_images_filename', type=str,
+                    default='../../Data/chipped/images_300_val.npy',
+					help='location of _images.npy')
+parser.add_argument('--val_boxes_filename', type=str,
+                    default='../../Data/chipped/boxes_300_val.npy',
+					help='location of _boxes.npy')
+parser.add_argument('--val_classes_filename', type=str,
+                    default='../../Data/chipped/classes_300_val.npy',
+					help='location of _classes.npy')
+parser.add_argument('--validate', type=str,
+                    default='../../Data/chipped/classes_300_val.npy',
+					help='If set to True, validation scores are calculated.')
 args = parser.parse_args()
 
 
+torch.set_default_tensor_type('torch.FloatTensor')
 if torch.cuda.is_available():
 	if args.cuda:
 		torch.set_default_tensor_type('torch.cuda.FloatTensor')
 	if not args.cuda:
 		print("WARNING: It looks like you have a CUDA device, but aren't " +
 			  "using CUDA.\nRun with --cuda for optimal training speed.")
-		torch.set_default_tensor_type('torch.FloatTensor')
-else:
-	torch.set_default_tensor_type('torch.FloatTensor')
 
 if not os.path.exists(args.save_folder):
 	os.mkdir(args.save_folder)
+
+if not os.path.exists(args.logdir):
+	os.mkdir(args.logdir)
+
+if args.visdom:
+	viz = visdom.Visdom()
 
 
 def train():
@@ -106,15 +121,10 @@ def train():
 								 transform=SSDAugmentation(cfg['min_dim'],
 														   MEANS))
 
-	if args.visdom:
-		import visdom
-		viz = visdom.Visdom()
-
-	writer = SummaryWriter('outputs/log_final1/')
+	writer = SummaryWriter(args.logdir)
 
 	ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
 	net = ssd_net
-	# writer.add_graph(net)
 
 	if args.cuda:
 		net = torch.nn.DataParallel(ssd_net)
@@ -132,8 +142,8 @@ def train():
 		net = net.cuda()
 
 	if not args.resume:
-		print('Initializing weights...')
 		# initialize newly added layers' weights with xavier method
+		print('Initializing weights...')
 		ssd_net.extras.apply(weights_init)
 		ssd_net.loc.apply(weights_init)
 		ssd_net.conf.apply(weights_init)
@@ -247,7 +257,7 @@ def train():
 						   repr(iteration) + '.pth')
 
 		# Validate Model
-		if eph_num % 2 == 0:
+		if args.validate and eph_num % 2 == 0:
 			running_loc_loss, running_conf_loss = 0.0, 0.0
 			for iteration, (images, targets) in enumerate(val_data_loader):
 				if args.cuda:
