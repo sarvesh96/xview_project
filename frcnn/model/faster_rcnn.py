@@ -146,7 +146,7 @@ class FasterRCNN(nn.Module):
         """
         if preset == 'visualize':
             self.nms_thresh = 0.3
-            self.score_thresh = 0.7
+            self.score_thresh = 0.3
         elif preset == 'evaluate':
             self.nms_thresh = 0.3
             self.score_thresh = 0.05

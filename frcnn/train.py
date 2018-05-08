@@ -115,7 +115,7 @@ def train(**kwargs):
                 roi_loc_loss = meter_data_trainer['roi_loc_loss']
                 roi_cls_loss = meter_data_trainer['roi_cls_loss']
                 total_loss = meter_data_trainer['total_loss']
-                print('lr:{:>7.4f}, rpn_loc_loss:{:>7.6f}, rpn_cls_loss:{:>7.6f}, roi_loc_loss:{:>7.6f}, roi_cls_loss:{:>7.6f}, total_loss:{:>7.6f}'.format(lr_, 0.0, rpn_loc_loss, rpn_cls_loss, roi_loc_loss, roi_cls_loss, total_loss))
+                print('lr:{:>7.4f}, rpn_loc_loss:{:>7.6f}, rpn_cls_loss:{:>7.6f}, roi_loc_loss:{:>7.6f}, roi_cls_loss:{:>7.6f}, total_loss:{:>7.6f}'.format(lr_, rpn_loc_loss, rpn_cls_loss, roi_loc_loss, roi_cls_loss, total_loss))
         eval_result = eval(test_dataloader, faster_rcnn, test_num=opt.test_num)
 
         if eval_result['map'] > best_map:
